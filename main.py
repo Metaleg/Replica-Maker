@@ -34,6 +34,8 @@ class ReplicaMaker:
         self.time = int(args.time)
 
     def make_replica(self):
+        """Makes synhronization. Checks directories on existance, opens log file, 
+        calls first comparison"""
         if not Path(self.src_path).exists():
             print("Source directory doesn't exist! Please, specify another directory.")
             exit()
@@ -62,6 +64,7 @@ class ReplicaMaker:
                     pbar.update(1)
 
     def _compare_directories(self, left, right):
+        """Recursively compare directories"""
         cmp = filecmp.dircmp(left, right)
         if cmp.common_dirs:
             for d in cmp.common_dirs:
@@ -74,6 +77,7 @@ class ReplicaMaker:
             self._overwrite(left, right, *cmp.diff_files)
 
     def _copy(self, src, dst, *items, overwrite=False):
+        """Remove folders and files"""
         for item in items:
             path = os.path.join(src, item)
             if os.path.isdir(path):
@@ -86,6 +90,7 @@ class ReplicaMaker:
                 print(f"{now.strftime(self.format)} [->] Copied {path}")
 
     def _remove(self, path, *items, overwrite=False):
+        """Remove folders and files"""
         for item in items:
             item_path = os.path.join(path, item)
             if os.path.isdir(item_path):
@@ -101,6 +106,7 @@ class ReplicaMaker:
                 print(f"{now.strftime(self.format)} [=>] Overwritten {item_path}")
 
     def _overwrite(self, src, dst, *items):
+        """Overwrite files with the same name but with different content"""
         for item in items:
             self._remove(dst, item, overwrite=True)
             self._copy(src, dst, item, overwrite=True)
