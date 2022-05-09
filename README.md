@@ -8,6 +8,9 @@ The program maintain a full, identical copy of destination folder at replica fol
     3. File creation/copying/removal operations are logging to a file and to the console output.
     4. Folder paths, synchronization interval and log file path provide by the command line arguments.
 
+## Requirements
+tqdm
+
 ## Usage:
 main.py [-h] [-t TIME] src dst log
 
