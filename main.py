@@ -31,7 +31,7 @@ class ReplicaMaker:
     def sigint_handler(self, sig, frame):
         self.log_descriptor.close()
         self.bar_descriptor.close()
-        print("\nInterrupted execution", "Have a nice day!", sep='\n')
+        print("\nExecution has been interrupted", "Have a nice day!", sep='\n')
         exit()
 
     def get_args(self):
