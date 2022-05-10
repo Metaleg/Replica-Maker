@@ -14,6 +14,8 @@ tqdm
 ## Usage:
 main.py [-h] [-t TIME] src dst log
 
+    Press CTRL+C to interrupt an execution
+
 Positional arguments:
 * ```src``` - You need to set up a source directory
 * ```dst``` - You need to set up a replica's directory
