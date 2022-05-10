@@ -6,21 +6,37 @@ from pathlib import Path
 import datetime
 from tqdm import tqdm
 from time import sleep
+from signal import signal, SIGINT
 
 
 class ReplicaMaker:
     default_time = 180
     format = "[%Y-%m-%d %H:%M:%S]"
+    n = 0  # number of instances of this class
+
+    def __new__(cls):
+        """Used for a singleton"""
+        if cls.n == 0:
+            cls.n += 1
+            return object.__new__(cls)
 
     def __init__(self):
         self.src_path = None
         self.dst_path = None
         self.log_path = None
         self.time = None
-        self.descriptor = None
+        self.log_descriptor = None
+        self.bar_descriptor = None
+
+    def sigint_handler(self, sig, frame):
+        self.log_descriptor.close()
+        self.bar_descriptor.close()
+        print("\nInterrupted execution", "Have a nice day!", sep='\n')
+        exit()
 
     def get_args(self):
-        parser = argparse.ArgumentParser(description="This program periodically makes a replica of a given folder.")
+        parser = argparse.ArgumentParser(description="This program periodically makes a replica of a given folder. "
+                                                     "Press 'CTRL+C' to finish")
         parser.add_argument("src", help="You need to set up a source directory")
         parser.add_argument("dst", help="You need to set up a replica's directory")
         parser.add_argument("log", help="You need to set up a log directory")
@@ -34,8 +50,7 @@ class ReplicaMaker:
         self.time = int(args.time)
 
     def make_replica(self):
-        """Makes synhronization. Checks directories on existance, opens log file, 
-        calls first comparison"""
+        signal(SIGINT, self.sigint_handler)
         if not Path(self.src_path).exists():
             print("Source directory doesn't exist! Please, specify another directory.")
             exit()
@@ -44,27 +59,27 @@ class ReplicaMaker:
             exit()
 
         while True:
-            self.descriptor = open(self.log_path, 'a')
+            self.log_descriptor = open(self.log_path, 'a')
             now = datetime.datetime.now()
-            self.descriptor.write(f"{now.strftime(self.format)} [STARTED SYNCHRONIZATION]\n")
+            self.log_descriptor.write(f"{now.strftime(self.format)} [STARTED SYNCHRONIZATION]\n")
             print(f"{now.strftime(self.format)} [STARTED SYNCHRONIZATION]")
             if not Path(self.dst_path).exists():
                 os.mkdir(self.dst_path)
-                self.descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory")
+                self.log_descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory")
                 print(f"{now.strftime(self.format)} [+] Added replica's directory")
             self._compare_directories(self.src_path, self.dst_path)
             now = datetime.datetime.now()
-            self.descriptor.write(f"{now.strftime(self.format)} [FINISHED SYNCHRONIZATION]\n")
+            self.log_descriptor.write(f"{now.strftime(self.format)} [FINISHED SYNCHRONIZATION]\n")
             print(f"{now.strftime(self.format)} [FINISHED SYNCHRONIZATION]")
-            self.descriptor.close()
+            self.log_descriptor.close()
 
-            with tqdm(total=self.time) as pbar:
-                for i in range(self.time):
-                    sleep(1)
-                    pbar.update(1)
+            self.bar_descriptor = tqdm(total=self.time)
+            for i in range(self.time):
+                sleep(1)
+                self.bar_descriptor.update(1)
+            self.bar_descriptor.close()
 
     def _compare_directories(self, left, right):
-        """Recursively compare directories"""
         cmp = filecmp.dircmp(left, right)
         if cmp.common_dirs:
             for d in cmp.common_dirs:
@@ -77,7 +92,6 @@ class ReplicaMaker:
             self._overwrite(left, right, *cmp.diff_files)
 
     def _copy(self, src, dst, *items, overwrite=False):
-        """Remove folders and files"""
         for item in items:
             path = os.path.join(src, item)
             if os.path.isdir(path):
@@ -86,11 +100,10 @@ class ReplicaMaker:
                 shutil.copy2(path, dst)
             if not overwrite:
                 now = datetime.datetime.now()
-                self.descriptor.write(f"{now.strftime(self.format)} [->] Copied {path}\n")
+                self.log_descriptor.write(f"{now.strftime(self.format)} [->] Copied {path}\n")
                 print(f"{now.strftime(self.format)} [->] Copied {path}")
 
     def _remove(self, path, *items, overwrite=False):
-        """Remove folders and files"""
         for item in items:
             item_path = os.path.join(path, item)
             if os.path.isdir(item_path):
@@ -99,14 +112,13 @@ class ReplicaMaker:
                 os.unlink(item_path)
             now = datetime.datetime.now()
             if not overwrite:
-                self.descriptor.write(f"{now.strftime(self.format)} [-] Removed {item_path}\n")
+                self.log_descriptor.write(f"{now.strftime(self.format)} [-] Removed {item_path}\n")
                 print(f"{now.strftime(self.format)} [-] Removed {item_path}")
             else:
-                self.descriptor.write(f"{now.strftime(self.format)} [=>] Overwritten {item_path}\n")
+                self.log_descriptor.write(f"{now.strftime(self.format)} [=>] Overwritten {item_path}\n")
                 print(f"{now.strftime(self.format)} [=>] Overwritten {item_path}")
 
     def _overwrite(self, src, dst, *items):
-        """Overwrite files with the same name but with different content"""
         for item in items:
             self._remove(dst, item, overwrite=True)
             self._copy(src, dst, item, overwrite=True)
