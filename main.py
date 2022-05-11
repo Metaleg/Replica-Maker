@@ -7,12 +7,20 @@ import datetime
 from tqdm import tqdm
 from time import sleep
 from signal import signal, SIGINT
+from colorama import Fore
 
 
 class ReplicaMaker:
     default_time = 180
     format = "[%Y-%m-%d %H:%M:%S]"
     n = 0  # number of instances of this class
+    sign_copy = Fore.GREEN + "[->]" + Fore.RESET
+    sign_remove = Fore.RED + "[-]" + Fore.RESET
+    sign_overwrite = Fore.BLUE + "[=>]" + Fore.RESET
+    sign_add = Fore.YELLOW + "[+]" + Fore.RESET
+    start_msg = Fore.MAGENTA + "Started synchronization" + Fore.RESET
+    finish_msg = Fore.MAGENTA + "Finished synchronization" + Fore.RESET
+    exit_msg = Fore.MAGENTA + "Execution has been interrupted.\n" + Fore.RESET + "Have a nice day!"
 
     def __new__(cls):
         """Used for a singleton"""
@@ -29,9 +37,12 @@ class ReplicaMaker:
         self.bar_descriptor = None
 
     def sigint_handler(self, sig, frame):
+        now = datetime.datetime.now()
+        self.log_descriptor.write(f"{now.strftime(self.format)} Execution has been interrupted\n")
         self.log_descriptor.close()
-        self.bar_descriptor.close()
-        print("\nExecution has been interrupted", "Have a nice day!", sep='\n')
+        if self.bar_descriptor:
+            self.bar_descriptor.close()
+        print(f"{now.strftime(self.format)}", self.exit_msg, sep=' ')
         exit()
 
     def get_args(self):
@@ -61,17 +72,16 @@ class ReplicaMaker:
         while True:
             self.log_descriptor = open(self.log_path, 'a')
             now = datetime.datetime.now()
-            self.log_descriptor.write(f"{now.strftime(self.format)} [STARTED SYNCHRONIZATION]\n")
-            print(f"{now.strftime(self.format)} [STARTED SYNCHRONIZATION]")
+            self.log_descriptor.write(f"{now.strftime(self.format)} STARTED SYNCHRONIZATION\n")
+            print(f"{now.strftime(self.format)}", self.start_msg, sep=' ')
             if not Path(self.dst_path).exists():
                 os.mkdir(self.dst_path)
-                self.log_descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory")
-                print(f"{now.strftime(self.format)} [+] Added replica's directory")
+                self.log_descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory\n")
+                print(f"{now.strftime(self.format)}", self.sign_add, "Added replica's directory", sep=' ')
             self._compare_directories(self.src_path, self.dst_path)
             now = datetime.datetime.now()
-            self.log_descriptor.write(f"{now.strftime(self.format)} [FINISHED SYNCHRONIZATION]\n")
-            print(f"{now.strftime(self.format)} [FINISHED SYNCHRONIZATION]")
-            self.log_descriptor.close()
+            self.log_descriptor.write(f"{now.strftime(self.format)} FINISHED SYNCHRONIZATION\n")
+            print(f"{now.strftime(self.format)}", self.finish_msg, sep=' ')
 
             self.bar_descriptor = tqdm(total=self.time)
             for i in range(self.time):
@@ -101,7 +111,7 @@ class ReplicaMaker:
             if not overwrite:
                 now = datetime.datetime.now()
                 self.log_descriptor.write(f"{now.strftime(self.format)} [->] Copied {path}\n")
-                print(f"{now.strftime(self.format)} [->] Copied {path}")
+                print(f"{now.strftime(self.format)}", self.sign_copy, f"Copied {path}", sep=' ')
 
     def _remove(self, path, *items, overwrite=False):
         for item in items:
@@ -113,10 +123,10 @@ class ReplicaMaker:
             now = datetime.datetime.now()
             if not overwrite:
                 self.log_descriptor.write(f"{now.strftime(self.format)} [-] Removed {item_path}\n")
-                print(f"{now.strftime(self.format)} [-] Removed {item_path}")
+                print(f"{now.strftime(self.format)}", self.sign_remove, f"Removed {item_path}", sep=' ')
             else:
                 self.log_descriptor.write(f"{now.strftime(self.format)} [=>] Overwritten {item_path}\n")
-                print(f"{now.strftime(self.format)} [=>] Overwritten {item_path}")
+                print(f"{now.strftime(self.format)}", self.sign_overwrite, f"Overwritten {item_path}", sep=' ')
 
     def _overwrite(self, src, dst, *items):
         for item in items:
