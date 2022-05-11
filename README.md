@@ -9,7 +9,7 @@ The program maintain a full, identical copy of destination folder at replica fol
     4. Folder paths, synchronization interval and log file path provide by the command line arguments.
 
 ## Requirements
-tqdm
+tqdm, colorama
 
 ## Usage:
 main.py [-h] [-t TIME] src dst log
