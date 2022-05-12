@@ -3,15 +3,14 @@ import filecmp
 import os
 import shutil
 from pathlib import Path
-import datetime
-from tqdm import tqdm
+from datetime import datetime, timedelta
 from time import sleep
 from signal import signal, SIGINT
 from colorama import Fore
 
 
 class ReplicaMaker:
-    default_time = 180
+    default_time = "0:0:30"
     format = "[%Y-%m-%d %H:%M:%S]"
     n = 0  # number of instances of this class
     sign_copy = Fore.GREEN + "[->]" + Fore.RESET
@@ -34,14 +33,13 @@ class ReplicaMaker:
         self.log_path = None
         self.time = None
         self.log_descriptor = None
-        self.bar_descriptor = None
 
     def sigint_handler(self, sig, frame):
-        now = datetime.datetime.now()
+        now = datetime.now()
+        print(end='\r')
         self.log_descriptor.write(f"{now.strftime(self.format)} Execution has been interrupted\n")
         self.log_descriptor.close()
-        if self.bar_descriptor:
-            self.bar_descriptor.close()
+
         print(f"{now.strftime(self.format)}", self.exit_msg, sep=' ')
         exit()
 
@@ -52,13 +50,18 @@ class ReplicaMaker:
         parser.add_argument("dst", help="You need to set up a replica's directory")
         parser.add_argument("log", help="You need to set up a log directory")
         parser.add_argument("-t", "--time", default=self.default_time,
-                            help="You can set up an interval between making a copy, the default value is 3 minutes")
+                            help="You can set up an interval between making a copy in format H:M:S, "
+                                 "the default value is 30 seconds")
         args = parser.parse_args()
 
         self.src_path = args.src
         self.dst_path = args.dst
         self.log_path = args.log
-        self.time = int(args.time)
+        self.time = args.time
+
+    def get_seconds(self):
+        ftr = [3600, 60, 1]
+        return sum([a * b for a, b in zip(ftr, map(int, self.time.split(':')))])
 
     def make_replica(self):
         signal(SIGINT, self.sigint_handler)
@@ -71,7 +74,7 @@ class ReplicaMaker:
 
         while True:
             self.log_descriptor = open(self.log_path, 'a')
-            now = datetime.datetime.now()
+            now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} STARTED SYNCHRONIZATION\n")
             print(f"{now.strftime(self.format)}", self.start_msg, sep=' ')
             if not Path(self.dst_path).exists():
@@ -79,15 +82,14 @@ class ReplicaMaker:
                 self.log_descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory\n")
                 print(f"{now.strftime(self.format)}", self.sign_add, "Added replica's directory", sep=' ')
             self._compare_directories(self.src_path, self.dst_path)
-            now = datetime.datetime.now()
+            now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} FINISHED SYNCHRONIZATION\n")
             print(f"{now.strftime(self.format)}", self.finish_msg, sep=' ')
 
-            self.bar_descriptor = tqdm(total=self.time)
-            for i in range(self.time):
+            seconds_total = self.get_seconds()
+            for i in range(seconds_total):
+                print("Next synchronization in:", str(timedelta(seconds=seconds_total - i)), sep=' ', end='\r')
                 sleep(1)
-                self.bar_descriptor.update(1)
-            self.bar_descriptor.close()
 
     def _compare_directories(self, left, right):
         cmp = filecmp.dircmp(left, right)
@@ -109,7 +111,7 @@ class ReplicaMaker:
             else:
                 shutil.copy2(path, dst)
             if not overwrite:
-                now = datetime.datetime.now()
+                now = datetime.now()
                 self.log_descriptor.write(f"{now.strftime(self.format)} [->] Copied {path}\n")
                 print(f"{now.strftime(self.format)}", self.sign_copy, f"Copied {path}", sep=' ')
 
@@ -120,7 +122,7 @@ class ReplicaMaker:
                 shutil.rmtree(item_path)
             else:
                 os.unlink(item_path)
-            now = datetime.datetime.now()
+            now = datetime.now()
             if not overwrite:
                 self.log_descriptor.write(f"{now.strftime(self.format)} [-] Removed {item_path}\n")
                 print(f"{now.strftime(self.format)}", self.sign_remove, f"Removed {item_path}", sep=' ')
