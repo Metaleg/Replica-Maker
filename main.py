@@ -67,14 +67,14 @@ class ReplicaMaker:
 
     def make_replica(self):
         signal(SIGINT, self.sigint_handler)
-        if not Path(self.src_path).exists():
-            print("Source directory doesn't exist! Please, specify another directory.")
-            exit()
-        if Path(self.dst_path).exists() and not os.path.isdir(self.dst_path):
-            print("Wrong replica's directory. Please, specify another directory.")
-            exit()
 
         while True:
+            if not Path(self.src_path).exists():
+                print("Source directory doesn't exist! Please, specify another directory.")
+                exit()
+            if Path(self.dst_path).exists() and not os.path.isdir(self.dst_path):
+                print("Wrong replica's directory. Please, specify another directory.")
+                exit()
             self.log_descriptor = open(self.log_path, 'a')
             now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} STARTED SYNCHRONIZATION\n")
