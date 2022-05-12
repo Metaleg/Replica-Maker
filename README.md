@@ -23,4 +23,4 @@ Positional arguments:
 
 Options:
 * ```-h, --help``` - show this help message and exit
-* ```-t TIME, --time TIME``` - You can set up an interval between making a copy, the default value is 3 minutes
+* ```-t TIME, --time TIME``` - You can set up an interval between making a copy in format H:M:S, the default value is 30 seconds
