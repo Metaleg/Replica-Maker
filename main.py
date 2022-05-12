@@ -19,7 +19,7 @@ class ReplicaMaker:
     sign_add = Fore.YELLOW + "[+]" + Fore.RESET
     start_msg = Fore.MAGENTA + "Started synchronization" + Fore.RESET
     finish_msg = Fore.MAGENTA + "Finished synchronization" + Fore.RESET
-    exit_msg = Fore.MAGENTA + "Execution has been interrupted.\n" + Fore.RESET + "Have a nice day!"
+    exit_msg = Fore.MAGENTA + "Execution has been interrupted\n" + Fore.RESET + "Have a nice day!"
 
     def __new__(cls):
         """Used for a singleton"""
@@ -37,9 +37,11 @@ class ReplicaMaker:
     def sigint_handler(self, sig, frame):
         now = datetime.now()
         print(end='\r')
+        if self.log_descriptor.closed:
+            self.log_descriptor = open(self.log_path, 'a')
+
         self.log_descriptor.write(f"{now.strftime(self.format)} Execution has been interrupted\n")
         self.log_descriptor.close()
-
         print(f"{now.strftime(self.format)}", self.exit_msg, sep=' ')
         exit()
 
@@ -85,6 +87,7 @@ class ReplicaMaker:
             now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} FINISHED SYNCHRONIZATION\n")
             print(f"{now.strftime(self.format)}", self.finish_msg, sep=' ')
+            self.log_descriptor.close()
 
             seconds_total = self.get_seconds()
             for i in range(seconds_total):
