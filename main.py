@@ -32,6 +32,7 @@ class ReplicaMaker:
         self.dst_path = None
         self.log_path = None
         self.time = None
+
         self.log_descriptor = None
 
     def sigint_handler(self, sig, frame):
@@ -60,12 +61,17 @@ class ReplicaMaker:
         self.dst_path = args.dst
         self.log_path = args.log
         self.time = args.time
+        try:
+            self.get_seconds()
+        except ValueError:
+            print("Error: time interval must be defined in H:M:S format")
+            exit()
 
     def get_seconds(self):
         ftr = [3600, 60, 1]
         return sum([a * b for a, b in zip(ftr, map(int, self.time.split(':')))])
 
-    def make_replica(self):
+    def start_synchronization(self):
         signal(SIGINT, self.sigint_handler)
 
         while True:
@@ -75,15 +81,19 @@ class ReplicaMaker:
             if Path(self.dst_path).exists() and not os.path.isdir(self.dst_path):
                 print("Wrong replica's directory. Please, specify another directory.")
                 exit()
+
             self.log_descriptor = open(self.log_path, 'a')
             now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} STARTED SYNCHRONIZATION\n")
             print(f"{now.strftime(self.format)}", self.start_msg, sep=' ')
+
             if not Path(self.dst_path).exists():
                 os.mkdir(self.dst_path)
                 self.log_descriptor.write(f"{now.strftime(self.format)} [+] Added replica's directory\n")
                 print(f"{now.strftime(self.format)}", self.sign_add, "Added replica's directory", sep=' ')
+
             self._compare_directories(self.src_path, self.dst_path)
+
             now = datetime.now()
             self.log_descriptor.write(f"{now.strftime(self.format)} FINISHED SYNCHRONIZATION\n")
             print(f"{now.strftime(self.format)}", self.finish_msg, sep=' ')
@@ -142,7 +152,7 @@ class ReplicaMaker:
 def main():
     r = ReplicaMaker()
     r.get_args()
-    r.make_replica()
+    r.start_synchronization()
 
 
 if __name__ == '__main__':
